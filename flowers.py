@@ -6,38 +6,22 @@ import asyncio
 import operator
 from utils import checks
 
-# todo race condition with way of getting/saving flowers maybe?
-def flower_db_get(user):
-    with open('flowers.json') as json_file:
-        json_data = json.load(json_file)
-        user_id = str(user.id)
-        try:
-            # return json_data[user_id]['FlowerCount']
-            return json_data[user_id]
-        except KeyError:
-            return 0
+def flower_db_get(user, json_data):
+    user_id = str(user.id)
+    try:
+        return json_data[user_id]
+    except KeyError:
+        return 0
 
 
-def flower_db_edit(user, count):
-    with open('flowers.json') as json_file:
-        json_data = json.load(json_file)
-        user_id = str(user.id)
-
-        try:
-            json_data[user_id] = json_data[user_id] + count
-        except KeyError:
-            json_data[user_id] = 1
-
-            # try:
-            #    json_data[user_id]['FlowerCount'] = json_data[user_id]['FlowerCount'] + count
-            # except KeyError:
-            #    json_data[user_id] = {'FlowerCount': 1}
-
+def flower_db_edit(user, json_data, count):
+    user_id = str(user.id)
+    json_data[user_id] = int(count)
     with open('flowers.json', 'w') as json_file:
         json_file.write(json.dumps(json_data, indent=2))
 
 
-async def do_flower(message, bot, reward=1, flower_type='flower'):
+async def do_flower(message, bot,json_data, reward=1, flower_type='flower'):
     flower_embed = discord.Embed(description='A {} has appeared! '
                                              'Type {}pick to pick it!'.format(flower_type, bot.command_prefix))
     flower_embed.set_image(url='https://i.imgur.com/1pIkDl2.jpg')
@@ -49,12 +33,12 @@ async def do_flower(message, bot, reward=1, flower_type='flower'):
         await bot.delete_message(flower_message)
         await bot.delete_message(wilt_message)
     else:
-        flower_db_edit(response.author, reward)
+        flower_db_edit(response.author, json_data, flower_db_get(response.author,json_data)+1)
         pick_message = await bot.send_message(message.channel,
                                               "{} has picked the {}! They now have {} flowers!"
                                               .format(response.author.display_name,
                                                       flower_type,
-                                                      flower_db_get(response.author)))
+                                                      flower_db_get(response.author,json_data)))
         await asyncio.sleep(10)
 
         def check(message):
@@ -67,7 +51,10 @@ async def do_flower(message, bot, reward=1, flower_type='flower'):
 
 class Flowers():
     def __init__(self, bot):
+        with open('flowers.json') as json_file:
+            json_data = json.load(json_file)
         self.bot = bot
+        self.json_data = json_data
 
     async def on_message(self, message):
         if message.author == message.server.me:
@@ -76,9 +63,9 @@ class Flowers():
             return
         if message.channel.name == 'shitposting':
             if random.randint(0, 100) == 1:
-                await do_flower(message, self.bot)
+                await do_flower(message, self.json_data, self.bot)
         elif random.randint(0, 2000) == 1:
-            await do_flower(message, self.bot, 10)
+            await do_flower(message, self.json_data, self.bot, 10)
 
     @commands.command(pass_context=True, name='flowers')
     async def _flowers(self, ctx):
@@ -112,21 +99,23 @@ class Flowers():
     @checks.mod_or_permissions(manage_roles=True)
     async def editflowers(self, user: discord.Member, count):
         """Admin command to set the flowers of a specific user"""
-        with open('flowers.json') as json_file:
-            json_data = json.load(json_file)
-            user_id = str(user.id)
+        json_data = self.json_data
+        user_id = str(user.id)
+        try:
+            await self.bot.say(
+                '{} had {} flowers, now they have {}'.format(user.display_name, flower_db_get(user,json_data), count))
+            json_data[user_id] = int(count)
+        except KeyError:
+            return
+        except ValueError:
+            await self.bot.say('{} is not an integer!'.format(count))
+        flower_db_edit(user,json_data,count)
 
-            try:
-                await self.bot.say(
-                    '{} had {} flowers, now they have {}'.format(user.display_name, json_data[user_id], count))
-                json_data[user_id] = int(count)
-            except KeyError:
-                return
-            except ValueError:
-                await self.bot.say('{} is not an integer!'.format(count))
+    @commands.command(pass_context=True)
+    @checks.is_owner()
+    async def makeflower(self,ctx):
+        await do_flower(ctx.message, self.bot, self.json_data)
 
-        with open('flowers.json', 'w') as json_file:
-            json_file.write(json.dumps(json_data, indent=2))
 
 
 def setup(bot):
