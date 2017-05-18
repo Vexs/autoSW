@@ -6,13 +6,6 @@ import asyncio
 import operator
 from utils import checks
 
-def flower_db_get(user, json_data):
-    user_id = str(user.id)
-    try:
-        return json_data[user_id]
-    except KeyError:
-        return 0
-
 
 def flower_db_edit(user, json_data, count):
     user_id = str(user.id)
@@ -33,12 +26,12 @@ async def do_flower(message, bot,json_data, reward=1, flower_type='flower'):
         await bot.delete_message(flower_message)
         await bot.delete_message(wilt_message)
     else:
-        flower_db_edit(response.author, json_data, flower_db_get(response.author,json_data)+1)
+        flower_db_edit(response.author, json_data, json_data.get(response.author.id, 0) + 1)
         pick_message = await bot.send_message(message.channel,
                                               "{} has picked the {}! They now have {} flowers!"
                                               .format(response.author.display_name,
                                                       flower_type,
-                                                      flower_db_get(response.author,json_data)))
+                                                      json_data.get(response.author.id, 0)))
         await asyncio.sleep(10)
 
         def check(message):
@@ -103,7 +96,7 @@ class Flowers():
         user_id = str(user.id)
         try:
             await self.bot.say(
-                '{} had {} flowers, now they have {}'.format(user.display_name, flower_db_get(user,json_data), count))
+                '{} had {} flowers, now they have {}'.format(user.display_name, json_data.get(user.id, 0), count))
             json_data[user_id] = int(count)
         except KeyError:
             return
