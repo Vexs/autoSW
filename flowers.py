@@ -14,7 +14,7 @@ def flower_db_edit(user, json_data, count):
         json_file.write(json.dumps(json_data, indent=2))
 
 
-async def do_flower(message, bot,json_data, reward=1, flower_type='flower'):
+async def do_flower(message, bot, json_data, reward=1, flower_type='flower'):
     flower_embed = discord.Embed(description='A {} has appeared! '
                                              'Type {}pick to pick it!'.format(flower_type, bot.command_prefix))
     flower_embed.set_image(url='https://i.imgur.com/1pIkDl2.jpg')
@@ -50,15 +50,13 @@ class Flowers():
         self.json_data = json_data
 
     async def on_message(self, message):
-        if message.author == message.server.me:
-            return
-        if self.bot.command_prefix + 'pick' in message.content:
+        if message.author.id == self.bot.user.id:
             return
         if message.channel.name == 'shitposting':
             if random.randint(0, 100) == 1:
-                await do_flower(message, self.json_data, self.bot)
-        elif random.randint(0, 2000) == 1:
-            await do_flower(message, self.json_data, self.bot, 10)
+                await do_flower(message, self.bot, self.json_data, self.bot)
+        elif random.randint(0, 500) == 1:
+            await do_flower(message,self.bot, self.json_data, self.bot, 10)
 
     @commands.command(pass_context=True, name='flowers')
     async def _flowers(self, ctx):
