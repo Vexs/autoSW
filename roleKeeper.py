@@ -15,7 +15,7 @@ class roleKeeper:
 
 
     async def on_member_remove(self, member):
-        if member.nick is None and len(member.roles == 0):
+        if member.nick is None and len(member.roles) == 0:
             return
         elif member.nick is not None:
             self.json_data['members'][member.id] = {
