@@ -42,6 +42,48 @@ class roleKeeper:
         except KeyError:
             pass
 
+    @commands.group()
+    async def roleKeep(self):
+        """The commands group for adding and removing roles to be kept on sever join/leave"""
+        pass
+
+    @roleKeep.command(pass_context=True)
+    @mod_or_permissions(manage_roles=True)
+    async def add(self, ctx, *, roleName:str):
+        """The command to add roles to the sticky role list"""
+        role = discord.utils.get(ctx.message.server.roles, name=roleName)
+        if role is not None:
+            if role.id not in self.saved_roles:
+                self.json_data['saving_roles'].append(role.id)
+                self.saved_roles = self.json_data["saving_roles"]
+                with open('roles.json', 'w') as json_file:
+                    json_file.write(json.dumps(self.json_data, indent=2))
+                await self.bot.say('Added {} to the list of sticky roles!'.format(roleName))
+            else:
+                await self.bot.say('{} is already sticky!'.format(roleName))
+        else:
+            await self.bot.say('Unabled to find a role by that name!')
+
+    @roleKeep.command(pass_context=True)
+    @mod_or_permissions(manage_roles=True)
+    async def remove(self, ctx, *, roleName:str):
+        """The command to remove roles from the sticky role list"""
+        role = discord.utils.get(ctx.message.server.roles, name=roleName)
+        if role is not None:
+            if role.id in self.saved_roles:
+                self.json_data['saving_roles'].remove(role.id)
+                self.saved_roles = self.json_data['saving_roles']
+                with open('roles.json', 'w') as json_file:
+                    json_file.write(json.dumps(self.json_data, indent=2))
+                await self.bot.say('Removed {} from the list of sticky roles!'.format(roleName))
+            else:
+                await self.bot.say('{} is not a sticky role!'.format(roleName))
+        else:
+            await self.bot.say('Unabled to find a role by that name!')
+
+
+
+
 
 
 
