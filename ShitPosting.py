@@ -153,7 +153,8 @@ class ShitPosting():
             file.close()
 
     @commands.command(pass_context=True)
-    async def roulette(self, ctx, bullets:int=1):
+    @commands.cooldown(1, 60, type=commands.BucketType.server)
+    async def roulette(self, ctx, bullets='1'):
         """A simple, stupid game of russian roulette. Load 1-6 bullets in the chamber,
 the less bullets you load, the longer the penalty."""
         bannedrole = discord.utils.get(ctx.message.server.roles, name='banned')
@@ -161,8 +162,15 @@ the less bullets you load, the longer the penalty."""
             await self.bot.add_roles(member, bannedrole)
             await asyncio.sleep(seconds)
             await self.bot.remove_roles(member, bannedrole)
+        try:
+            int(bullets)
+        except ValueError:
+            if ctx.message.author.id== '242506098261753857':
+                await self.bot.say('Fuck you skeletonbones you goddamn bot breaking piece of shit')
+            await self.bot.say('{} is not a number!'.format(bullets))
+        bullets = int(bullets)
         if bannedrole in ctx.message.author.roles:
-            await self.bot.say('{} is already dead and as such, lacks the nessicary things to either load or fire a '
+            await self.bot.say('{} is already dead and as such, lacks the necessary things to either load or fire a '
                                'gun!'.format(ctx.message.author.display_name))
         elif bullets < 0:
             await self.bot.say('{} removes the nothing from the revolver and causes a black hole!'.format(
@@ -172,7 +180,7 @@ the less bullets you load, the longer the penalty."""
             await self.bot.say('{} loads nothing into the revolver and nothing happens!'.format(
                 ctx.message.author.display_name))
         elif bullets >= 6:
-            await self.bot.say('{} loads the revolver full of bullets and shoots themselves in the head!'
+            await self.bot.say('{} loads the revolver full of bullets and shoots themselves in the head! '
                                .format(ctx.message.author.display_name))
             await tempban(ctx.message.author, 30)
         elif bullets < 6:
@@ -181,8 +189,8 @@ the less bullets you load, the longer the penalty."""
                                                  '' if bullets == 1 else 's'))
             await asyncio.sleep(5)
             if random.randint(1,6) <= bullets:
-                await self.bot.edit_message(message, message.content+'\n and shoots themselves in the head!')
-                await tempban(ctx.message.author, (6-bullets)*30)
+                await self.bot.edit_message(message, message.content+'\nand shoots themselves in the head!')
+                await tempban(ctx.message.author, (6-bullets)*60)
             else:
                 await self.bot.edit_message(message, message.content + '\n click!')
 

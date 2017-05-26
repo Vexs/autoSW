@@ -17,12 +17,9 @@ class roleKeeper:
     async def on_member_remove(self, member):
         if member.nick is None and len(member.roles) == 0:
             return
-        elif member.nick is not None:
-            self.json_data['members'][member.id] = {
-                'roles': [x.id for x in member.roles if x.id in self.saved_roles], 'nickname': member.nick}
-        else:
-            self.json_data['members'][member.id] = {
-                'roles': [x.id for x in member.roles if x.id in self.saved_roles], 'nickname': 'None'}
+        self.json_data['members'][member.id] = dict(roles=[x.id for x in member.roles if x.id in self.saved_roles],
+                                                    nickname='None' if member.nick is None else member.nick,
+                                                    name=member.display_name)
         with open('roles.json','w') as json_file:
             json_file.write(json.dumps(self.json_data, indent=2))
 
