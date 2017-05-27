@@ -161,6 +161,11 @@ class Music:
     @play.error
     async def play_error(self,error,ctx):
         if isinstance(error,commands.CommandOnCooldown):
+            if ctx.message.author.server_permissions.manage_roles:
+                await ctx.invoke(ctx.command, *ctx.args[2:], **ctx.kwargs)
+                return
+            await self.bot.say(error)
+        else:
             await self.bot.say(error)
 
 
