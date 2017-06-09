@@ -26,7 +26,7 @@ async def do_flower(message, bot, json_data, reward=1, flower_type='flower'):
         await bot.delete_message(flower_message)
         await bot.delete_message(wilt_message)
     else:
-        flower_db_edit(response.author, json_data, json_data.get(response.author.id, 0) + 1)
+        flower_db_edit(response.author, json_data, json_data.get(response.author.id, 0) + reward)
         pick_message = await bot.send_message(message.channel,
                                               "{} has picked the {}! They now have {} flowers!"
                                               .format(response.author.display_name,
@@ -49,17 +49,35 @@ class Flowers():
         self.bot = bot
         self.json_data = json_data
 
+    def flower_cost(flowers, *exclude_channels):
+        def flower_cost_check(ctx):
+            if ctx.message.channel.name in exclude_channels:
+                return True
+            if ctx.cog is None:
+                return True
+            try:
+                if ctx.cog.json_data[ctx.message.author.id] >= flowers:
+                    ctx.cog.json_data[ctx.message.author.id] = ctx.cog.json_data[ctx.message.author.id] - flowers
+                    with open('flowers.json', 'w') as json_file:
+                        json_file.write(json.dumps(ctx.cog.json_data, indent=2))
+                    return True
+            except KeyError:
+                return False
+            return False
+
+        return commands.check(flower_cost_check)
+
     async def on_message(self, message):
         if message.author.id == self.bot.user.id:
             return
         if message.channel.name == 'shitposting':
             if random.randint(0, 100) == 1:
-                await do_flower(message, self.bot, self.json_data, self.bot)
+                await do_flower(message, self.bot, self.json_data, 1, 'flower')
         elif random.randint(0, 500) == 1:
-            await do_flower(message,self.bot, self.json_data, self.bot, 10)
+            await do_flower(message, self.bot, self.json_data, random.randint(5, 10), 'flower')
 
-    @commands.command(pass_context=True, name='flowers')
-    async def _flowers(self, ctx):
+    @commands.group(pass_context=True, aliases=['flower'], invoke_without_command=True)
+    async def flowers(self, ctx):
         """Gets the flower leaderboards, if users are mentioned in the command, gets their stats specifically"""
         with open('flowers.json') as json_file:
             json_data = json.load(json_file)
@@ -86,9 +104,13 @@ class Flowers():
                     message_list.append('{} has no flowers!'.format(member.display_name))
             await self.bot.say('\n'.join(message_list))
 
-    @commands.command()
+    # @flowers.command(pass_context=True)
+    # async def list(self, ctx):
+
+
+    @flowers.command()
     @checks.mod_or_permissions(manage_roles=True)
-    async def editflowers(self, user: discord.Member, count):
+    async def edit(self, user: discord.Member, count):
         """Admin command to set the flowers of a specific user"""
         json_data = self.json_data
         user_id = str(user.id)
@@ -100,13 +122,78 @@ class Flowers():
             return
         except ValueError:
             await self.bot.say('{} is not an integer!'.format(count))
-        flower_db_edit(user,json_data,count)
+        flower_db_edit(user, json_data, count)
 
-    @commands.command(pass_context=True)
+    @flowers.command(pass_context=True)
     @checks.is_owner()
-    async def makeflower(self,ctx):
+    async def make(self, ctx):
+        """Causes a flower spawn"""
         await do_flower(ctx.message, self.bot, self.json_data)
 
+    @flowers.command(pass_context=True)
+    @flower_cost(5)
+    async def nick(self, ctx, user: discord.Member, *, nickname):
+        """Changes someone's name at the cost of 5 flowers"""
+        if user == ctx.message.server.me:
+            return
+        try:
+            await self.bot.change_nickname(user, nickname)
+            await self.bot.add_reaction(ctx.message, '✅')
+        except Exception as e:
+            await self.bot.say(e)
+
+    @nick.error
+    async def flowernick_error(self, error, ctx):
+        if isinstance(error, discord.ext.commands.errors.BadArgument):
+            await self.bot.send_message(ctx.message.channel, error)
+        else:
+            await self.bot.say(error)
+
+    @flowers.command(pass_context=True)
+    async def give(self, ctx, count, *, user: discord.Member):
+        """Gives X flowers to Y!"""
+        json_data = self.json_data
+        count = abs(count)
+        if json_data[ctx.message.author.id] < int(count):
+            await self.bot.say('You are too poor')
+        else:
+            await self.bot.say('{} gave {} {} flowers!'.format(
+                ctx.message.author.display_name, user.display_name, count))
+            json_data[ctx.message.author.id] = json_data[ctx.message.author.id] - int(count)
+            json_data[user.id] = json_data[user.id] + int(count)
+            with open('flowers.json', 'w') as json_file:
+                json_file.write(json.dumps(json_data, indent=2))
+
+    @commands.command(pass_context=True)
+    @flower_cost(5, 'shitposting')
+    async def angry(self, ctx, *, string='missing\n                      arguments'):
+        from PIL import Image, ImageDraw, ImageFont
+        import aiohttp
+        import io
+
+        def make_angry(angry, avatar, text):
+            avatar.thumbnail((62, 62))
+            angry.paste(avatar, box=(14, 14))
+            fnt = ImageFont.truetype('assets/LeviWindows.ttf', 22)
+            d = ImageDraw.Draw(angry)
+            d.fontmode = "1"
+            d.multiline_text((109, -1), "I am angry\n ANGRY ABOUT {}".format(text.upper()),
+                             fill=(0, 0, 0), font=fnt, spacing=-5)
+            imagefileobject = io.BytesIO()
+            angry.save(imagefileobject, format='png')
+            imagefileobject.seek(0)
+            return imagefileobject
+
+        with Image.open('assets/angry.png').convert('RGBA') as angry:
+            with aiohttp.ClientSession() as session:
+                async with session.get(ctx.message.author.avatar_url) as resp:
+                    with Image.open(io.BytesIO(await resp.read())).convert('RGBA') as avatar:
+                        angry_image = await self.bot.loop.run_in_executor(None, make_angry, angry, avatar, string)
+                        await self.bot.send_file(ctx.message.channel, fp=angry_image, filename='angry.png')
+
+    @angry.error
+    async def angry_error(self, error, ctx):
+       await self.bot.say('You are too poor!')
 
 
 def setup(bot):
