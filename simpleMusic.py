@@ -44,7 +44,7 @@ async def create_ytdl_download_player(self, voice_client, song, *, opts=None, **
     for key in json_data.copy().keys():
         json_data[key]['life'] -= 1
         if json_data[key]['life'] <= 0:
-            print('purging {}'.format(key))
+            #print('purging {}'.format(key))
             json_data.pop(key, None)
             try:
                 os.remove('music_files/{}.mp3'.format(key))
@@ -117,7 +117,7 @@ class VoiceEntry:
         except KeyError:
             pass
 
-        self.start_datetime = datetime.datetime.now()
+        self.start_datetime = datetime.datetime.utcnow()
         self.end_datetime = self.start_datetime + datetime.timedelta(seconds=player.duration)
 
     def __str__(self):
@@ -137,7 +137,7 @@ class VoiceState:
         self.voice = None
         self.bot = bot
         self.play_next_song = asyncio.Event()
-        self.songs = asyncio.Queue()
+        self.songs = asyncio.Queue(maxsize=5)
         self.skip_votes = set()
         self.audio_player = self.bot.loop.create_task(self.audio_player_task())
 
@@ -172,7 +172,7 @@ class VoiceState:
             await self.play_next_song.wait()
 
 
-class MusicTest:
+class SimpleMusic:
     def __init__(self, bot):
         self.bot = bot
         self.loop = bot.loop
@@ -262,6 +262,9 @@ class MusicTest:
             success = await ctx.invoke(self.summon)
             if not success:
                 return
+        if state.songs.full():
+            await self.bot.say('Queue is full! 5 song max!')
+            return
         try:
             await self.bot.send_typing(ctx.message.channel)
             player = await create_ytdl_download_player(self, state.voice, song, opts=self.opts, after=state.toggle_next)
@@ -339,6 +342,9 @@ class MusicTest:
         if not state.is_playing():
             await self.bot.say('Not playing any music right now...')
             return
+        if ctx.message.author not in state.voice.channel.voice_members:
+            await self.bot.say('You are not in a voice channel!')
+            return
         channel_member_count = len(state.voice.channel.voice_members) - 1
         voter = ctx.message.author
         if voter == state.current.requester:
@@ -409,4 +415,4 @@ class MusicTest:
 
 
 def setup(bot):
-    bot.add_cog(MusicTest(bot))
+    bot.add_cog(SimpleMusic(bot))
