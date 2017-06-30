@@ -9,9 +9,9 @@ from discord.ext import commands
 from tokenfile import TOKEN
 from utils import checks, chanUtils
 
-bot = commands.Bot(command_prefix='&')
+bot = commands.Bot(command_prefix='&', pm_help=True)
 
-tfgthread = chanUtils.getthread('vg', '/tfg/')
+#tfgthread = chanUtils.getthread('vg', '/tfg/')
 
 if not discord.opus.is_loaded():
     # the 'opus' library here is opus.dll on windows
@@ -92,22 +92,25 @@ async def reload(extension_name: str):
     await bot.say("{} reloaded.".format(extension_name))
 
 
-async def getthreadupdates():
-    global tfgthread
-    await bot.wait_until_ready()
-    mirrorchannel = discord.Object(id='275869654919151617')
-    generalchannel = discord.Object(id='298667118810103808')
-    while not bot.is_closed:
-        newposts = tfgthread.update()
-        if newposts == 0:
-            oldurl = tfgthread.url
-            oldtime = tfgthread.topic.datetime
-            tfgthread = chanUtils.getthread()
-            if oldurl != tfgthread.url and oldtime < tfgthread.topic.datetime:
-                await bot.send_message(generalchannel, "New thread at: " + tfgthread.url)
-        for post in tfgthread.posts[len(tfgthread.posts) - newposts:]:
-            await bot.send_message(mirrorchannel, embed=chanUtils.posttoembed(post))
-        await asyncio.sleep(60)  # task runs every 1 minutes
+#async def getthreadupdates():
+#    global tfgthread
+#    await bot.wait_until_ready()
+#    mirrorchannel = discord.Object(id='275869654919151617')
+#    generalchannel = discord.Object(id='298667118810103808')
+#    while not bot.is_closed:
+#        try:
+#            newposts = tfgthread.update()
+#            if newposts == 0:
+#                oldurl = tfgthread.url
+#                oldtime = tfgthread.topic.datetime
+#                tfgthread = chanUtils.getthread()
+#                if oldurl != tfgthread.url and oldtime < tfgthread.topic.datetime:
+#                    await bot.send_message(generalchannel, "New thread at: " + tfgthread.url)
+#            for post in tfgthread.posts[len(tfgthread.posts) - newposts:]:
+#                await bot.send_message(mirrorchannel, embed=chanUtils.posttoembed(post))
+#            await asyncio.sleep(60)  # task runs every 1 minutes
+#        except Exception as e:
+#            print(e)
 
 
 def markovstring(filename='log.txt'):
@@ -118,11 +121,10 @@ def markovstring(filename='log.txt'):
             message = text_model.make_sentence()
             if message is not None:
                 return message
-                break
 
 
-startup_extensions = ["AdminTools", "ShitPosting", "ChanTools",
-                      "RddtChecks", "ServerTools", "Music", "logs"]
+startup_extensions = ["tags", "AdminTools", "ShitPosting", "ChanTools", "roleKeeper",
+                      "RddtChecks", "ServerTools", "simpleMusic", "logs", "flowers"] #"google"]
 
 if __name__ == "__main__":
     for extension in startup_extensions:
@@ -132,5 +134,5 @@ if __name__ == "__main__":
             exc = '{}: {}'.format(type(e).__name__, e)
             print('Failed to load extension {}\n{}'.format(extension, exc))
 
-bot.loop.create_task(getthreadupdates())
+#bot.loop.create_task(getthreadupdates())
 bot.run(TOKEN, bot=True)
