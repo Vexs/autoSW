@@ -7,20 +7,27 @@ import os
 import re
 import asyncio
 import io
+import datetime
+import objgraph
 
-regex = re.compile(r"^\*?un(.{1,5})s\b", re.IGNORECASE)
+regex = re.compile(r"^\*?un(.{1,5})s\b([^*]*)", re.IGNORECASE)
+
 
 async def unzips(self, message):
     search = re.match(regex, message.content)
     if search is not None:
-        bannedrole = discord.utils.get(message.server.roles, name='banned')
-        if bannedrole not in message.author.roles:
-            await self.bot.send_message(message.channel, '*re{}s*'.format(search.group(1)))
-            await self.bot.add_roles(message.author, bannedrole)
-            await asyncio.sleep(60)
-            await self.bot.remove_roles(message.author, bannedrole)
+        if search.group(1).lower() == 'les':
+            return
+        if len(search.group(2)) < 9 or search.group(1).lower() == 'zip':
+            bannedrole = discord.utils.get(message.server.roles, name='banned')
+            if bannedrole not in message.author.roles:
+                await self.bot.send_message(message.channel, '*re{}s{}*'.format(search.group(1),search.group(2)))
+                await self.bot.add_roles(message.author, bannedrole)
+                await asyncio.sleep(60)
+                await self.bot.remove_roles(message.author, bannedrole)
 
-class AdminTools():
+
+class AdminTools:
     def __init__(self, bot):
         self.bot = bot
         self.purged_messages = []
@@ -31,9 +38,15 @@ class AdminTools():
         await self.bot.send_message(self.bot.get_channel(chan), msg)
 
     async def on_message(self, message):
+        if message.author.id == self.bot.user.id:
+            return
         await unzips(self, message)
+        if '\U0001f3b7' in message.content and '\U0001f986' in message.content:
+            await self.bot.delete_message(message)
 
     async def on_message_edit(self, before, message):
+        if message.author.id == self.bot.user.id:
+            return
         await unzips(self, message)
 
     @commands.command(pass_context=True, aliases=['zipped'])
@@ -119,19 +132,24 @@ class AdminTools():
         file = io.BytesIO()
         log_list = []
         for msg in purged_messages:
-            log_list.append('[{}] <{}>: {}'.format(msg.timestamp.strftime('%F %H:%M'),msg.author.display_name,
-                                                 msg.clean_content))
+            log_list.append('[{}] <{}>: {}'.format(msg.timestamp.strftime('%F %H:%M'), msg.author.display_name,
+                                                   msg.clean_content))
             if msg.embeds:
                 for embed in msg.embeds:
                     log_list.append('Embed:')
                     for key, value in embed.items():
                         log_list.append('{} : {}'.format(key, value))
+            if msg.attachments:
+                try:
+                    msg.attachments[0]['height']
+                    log_list.append('with image {} '.format(msg.attachments[0]['filename']))
+                except KeyError:
+                    log_list.append('with file {} '.format(msg.attachments[0]['filename']))
 
-        file.write(bytes('\r\n'.join(log_list),'utf-8'))
+        file.write(bytes('\r\n'.join(log_list), 'utf-8'))
         file.seek(0)
         await self.bot.send_file(channel, file, filename='logs.txt', content='{} Deleted {} messages in {}'.format(
             ctx.message.author.display_name, len(self.purged_messages), ctx.message.channel.name))
-
 
     @commands.command(pass_context=True, hidden=True)
     @checks.is_owner()

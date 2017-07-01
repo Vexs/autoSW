@@ -11,7 +11,6 @@ from utils import checks, chanUtils
 
 bot = commands.Bot(command_prefix='&', pm_help=True)
 
-
 if not discord.opus.is_loaded():
     # the 'opus' library here is opus.dll on windows
     # or libopus.so on linux in the current directory

@@ -53,6 +53,7 @@ async def update_thread(bot, board_name, thread_name, general_channel_id, mirror
 
             if thread.url != new_thread.url and thread.topic.datetime < new_thread.topic.datetime:
                 thread = new_thread
+
                 await bot.send_message(general_channel, "New thread at: " + thread.url)
 
         for post in thread.posts[len(thread.posts) - new_posts:]:
@@ -69,6 +70,7 @@ class ThreadUpdater:
         self.loop = self.bot.loop
         self.thread_update_task = self.bot.loop.create_task(update_thread(self.bot, 'vg', 'Titanfall General',
                                                                           '298667118810103808', '275869654919151617'))
+
 
     def __unload(self):
         self.thread_update_task.cancel()
