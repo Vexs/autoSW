@@ -9,13 +9,20 @@ def get_thread(board, thread_identifier):
     board = basc_py4chan.Board(board)
     return next(x for x in board.get_all_threads() if thread_identifier in x.topic.subject)
 
+
 async def last_post_id_get(bot, channel):
+    regex = re.compile(r'No\. (\d+)')
     async for message in bot.logs_from(channel, limit=100):
         if message.author.id == bot.user.id:
             if message.embeds:
                 try:
-                    return int(re.search(r'No\. (\d+)', message.embeds[0]['title']).group(1))
-                except:
+                    search = re.search(regex, message.embeds[0]['title'])
+                    if search is None:
+                        pass
+                    if search.group(1) == '':
+                        pass
+                    return int(search.group(1))
+                except Exception:
                     pass
     return None
 
@@ -42,11 +49,11 @@ async def update_thread(bot, board_name, thread_name, general_channel_id, mirror
             new_posts = await bot.loop.run_in_executor(None, thread.update)
 
         if new_posts == 0:
-            old_url = thread.url
-            old_time = thread.topic.datetime
-            thread = await bot.loop.run_in_executor(None, get_thread, board_name, thread_name)
+            new_thread = await bot.loop.run_in_executor(None, get_thread, board_name, thread_name)
 
-            if old_url != thread.url and old_time < thread.topic.datetime:
+            if thread.url != new_thread.url and thread.topic.datetime < new_thread.topic.datetime:
+                thread = new_thread
+
                 await bot.send_message(general_channel, "New thread at: " + thread.url)
 
         for post in thread.posts[len(thread.posts) - new_posts:]:
@@ -62,7 +69,8 @@ class ThreadUpdater:
         self.bot = bot
         self.loop = self.bot.loop
         self.thread_update_task = self.bot.loop.create_task(update_thread(self.bot, 'vg', 'Titanfall General',
-                                                                     '298667118810103808', '275869654919151617'))
+                                                                          '298667118810103808', '275869654919151617'))
+
 
     def __unload(self):
         self.thread_update_task.cancel()
