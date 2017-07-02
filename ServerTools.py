@@ -10,16 +10,6 @@ import random
 class ServerTools():
     def __init__(self, bot):
         self.bot = bot
-        self.role_dict = {
-            'NA': '246824201183297538',
-            'EU': '246824219671920640',
-            'Asia': '246864962042068992',
-            'OCE': '246865084825993216',
-            'Shitposting': '298679787226923011',
-            'Payday': '321524705230192650',
-            'ffxiv': '321581498224607234',
-            'nsfw': '330885146020413440'
-        }
         self.channel_regex = re.compile(r'@#((?:\w\s?){1,30})', re.IGNORECASE)
 
     async def on_message(self, message):
