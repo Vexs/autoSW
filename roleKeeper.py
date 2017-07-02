@@ -5,8 +5,10 @@ from utils.checks import mod_or_permissions
 import json
 from utils import checks
 
-class roleKeeper:
+
+class RoleKeeper:
     """"""
+
     def __init__(self, bot):
         with open('roles.json') as json_file:
             json_data = json.load(json_file)
@@ -21,7 +23,7 @@ class roleKeeper:
         self.json_data['members'][member.id] = dict(roles=[x.id for x in member.roles if x.id in self.saved_roles],
                                                     nickname='None' if member.nick is None else member.nick,
                                                     name=member.display_name)
-        with open('roles.json','w') as json_file:
+        with open('roles.json', 'w') as json_file:
             json_file.write(json.dumps(self.json_data, indent=2))
 
     async def on_member_join(self, member):
@@ -42,7 +44,6 @@ class roleKeeper:
 
         except KeyError:
             pass
-
 
     @commands.group(pass_context=True)
     async def rolekeep(self, ctx):
@@ -65,41 +66,41 @@ class roleKeeper:
 
     @rolekeep.command(pass_context=True)
     @mod_or_permissions(manage_roles=True)
-    async def add(self, ctx, *, roleName:str):
+    async def add(self, ctx, *, role_name: str):
         """The command to add roles to the sticky role list"""
-        role = discord.utils.get(ctx.message.server.roles, name=roleName)
+        role = discord.utils.get(ctx.message.server.roles, name=role_name)
         if role is not None:
             if role.id not in self.saved_roles:
                 self.json_data['saving_roles'].append(role.id)
                 self.saved_roles = self.json_data["saving_roles"]
                 with open('roles.json', 'w') as json_file:
                     json_file.write(json.dumps(self.json_data, indent=2))
-                await self.bot.say('Added {} to the list of sticky roles!'.format(roleName))
+                await self.bot.say('Added {} to the list of sticky roles!'.format(role_name))
             else:
-                await self.bot.say('{} is already sticky!'.format(roleName))
+                await self.bot.say('{} is already sticky!'.format(role_name))
         else:
             await self.bot.say('Unabled to find a role by that name!')
 
     @rolekeep.command(pass_context=True)
     @mod_or_permissions(manage_roles=True)
-    async def remove(self, ctx, *, roleName:str):
+    async def remove(self, ctx, *, role_name: str):
         """The command to remove roles from the sticky role list"""
-        role = discord.utils.get(ctx.message.server.roles, name=roleName)
+        role = discord.utils.get(ctx.message.server.roles, name=role_name)
         if role is not None:
             if role.id in self.saved_roles:
                 self.json_data['saving_roles'].remove(role.id)
                 self.saved_roles = self.json_data['saving_roles']
                 with open('roles.json', 'w') as json_file:
                     json_file.write(json.dumps(self.json_data, indent=2))
-                await self.bot.say('Removed {} from the list of sticky roles!'.format(roleName))
+                await self.bot.say('Removed {} from the list of sticky roles!'.format(role_name))
             else:
-                await self.bot.say('{} is not a sticky role!'.format(roleName))
+                await self.bot.say('{} is not a sticky role!'.format(role_name))
         else:
             await self.bot.say('Unabled to find a role by that name!')
 
     @rolekeep.command(pass_context=True)
     @mod_or_permissions(manage_roles=True)
-    async def list(self,ctx):
+    async def list(self, ctx):
         """Lists all the sticky roles"""
         role_list = [x.name for x in ctx.message.server.roles if x.id in self.saved_roles]
         await self.bot.say('The following roles are sticky!\n ```{}```'.format('\n'.join(role_list)))
@@ -160,7 +161,6 @@ class roleKeeper:
                 json_file.write(json.dumps(self.json_data, indent=2))
             await self.bot.say('Added {} to the list of roleme roles!'.format(rolename))
 
-
     @roleme.command(pass_context=True)
     @mod_or_permissions(manage_roles=True)
     async def admin_remove(self, ctx, *, rolename):
@@ -178,10 +178,5 @@ class roleKeeper:
             await self.bot.say('Removed {} from the list of roleme roles!'.format(rolename))
 
 
-
-
-
-
-
 def setup(bot):
-    bot.add_cog(roleKeeper(bot))
+    bot.add_cog(RoleKeeper(bot))
