@@ -10,10 +10,34 @@ import random
 class ServerTools():
     def __init__(self, bot):
         self.bot = bot
+        self.role_dict = {
+            'NA': '246824201183297538',
+            'EU': '246824219671920640',
+            'Asia': '246864962042068992',
+            'OCE': '246865084825993216',
+            'Shitposting': '298679787226923011',
+            'Payday': '321524705230192650',
+            'ffxiv': '321581498224607234',
+            'nsfw': '330885146020413440'
+        }
+        self.channel_regex = re.compile(r'@#((?:\w\s?){1,30})', re.IGNORECASE)
+
+    async def on_message(self, message):
+        search = re.search(self.channel_regex, message.content)
+        if search is not None:
+            search_word = search.group(1).lower()
+            channel = next(x for x in message.server.channels if search_word in x.name.lower())
+            if channel is not None:
+                if channel.type is discord.ChannelType.voice:
+                    await self.bot.send_message(message.channel,
+                                                ', '.join([x.mention for x in channel.voice_members[:6]]))
+
+
+
 
     @commands.command(pass_context=True)
-    @commands.cooldown(1,220,type=commands.BucketType.server)
-    async def archive(self,ctx,count:int = 100):
+    @commands.cooldown(1, 220, type=commands.BucketType.server)
+    async def archive(self, ctx, count: int = 100):
         file = io.BytesIO()
         log_list = []
         if count > 10000:
@@ -40,7 +64,7 @@ class ServerTools():
                                  .format(count))
 
 
-        #if message.attachments:
+        # if message.attachments:
         #    try:
         #        message.attachments[0]['height']
         #        file_string = 'with image {} '.format(message.attachments[0]['filename'])
@@ -49,7 +73,7 @@ class ServerTools():
 
     @commands.command(pass_context=True)
     @checks.is_botbanned()
-    async def quote(self,cxt, quoteid, lim=500):
+    async def quote(self, cxt, quoteid, lim=500):
         """Quotes a message! Usage: &quote <message ID>"""
         async for msg in self.bot.logs_from(cxt.message.channel, limit=lim):
             if msg.id == quoteid:
@@ -62,39 +86,17 @@ class ServerTools():
         em.set_author(name=quote.author.name, icon_url=quote.author.avatar_url)
         await self.bot.say(embed=em)
 
-    @commands.command(pass_context=True)
-    @checks.is_botbanned()
-    async def roleme(self,ctx, *, role):
-        """Sets your NA/EU role. Usage: &roleme <na/eu/shitposting>, or &roleme remove to remove all roles"""
-        rolenames = ['NA','EU', 'shitposting', 'OCE', 'ASIA', 'Payday', 'ffxiv']
-        roles = []
-        for r in rolenames:
-            try:
-                roles.append(discord.utils.get(ctx.message.server.roles,name=r))
-            except discord.NotFound:
-                await print('Role {} not found!'.format(r))
-        if role.lower() == 'remove':
-            for r in roles:
-                await self.bot.remove_roles(ctx.message.author, r)
-            await self.bot.say('Role(s) removed!')
-        else:
-            for r in roles:
-                if r.name.lower() == role.lower():
-                    await self.bot.add_roles(ctx.message.author, r)
-                    await self.bot.say('Role "{}" added!'.format(r.name))
-                    break
-
 
     @commands.command()
     @checks.is_botbanned()
-    async def searchusers(self,name):
+    async def searchusers(self, name):
         """Usage: &searchusers <username>. Returns the origin profile search page for that username."""
         await self.bot.say('https://www.origin.com/usa/en-us/search?searchString={}&category=people'.format(name))
 
     @commands.command()
     @checks.is_botbanned()
-    @commands.cooldown(1,30,type=commands.BucketType.user)
-    async def roll(self,*,dice_string):
+    @commands.cooldown(1, 30, type=commands.BucketType.user)
+    async def roll(self, *, dice_string):
         """Rolls XdY dice.
 Advanced functions:
 Supports basic arithmatic (1d6 + 5)
@@ -128,7 +130,8 @@ Not providing a game will give you the top 10 played games"""
                 if m.game is not None:
                     game_dict[m.game.name] = game_dict.get(m.game.name, 0) + 1
             sorted_dict = sorted(game_dict.items(), key=(lambda x: x[1]), reverse=True)
-            say_string = 'Games being played: \n' + '\n'.join(['**{}** people playing **{}**'.format(value, key) for (key, value) in sorted_dict][:10])
+            say_string = 'Games being played: \n' + '\n'.join(
+                ['**{}** people playing **{}**'.format(value, key) for (key, value) in sorted_dict][:10])
             await self.bot.say(say_string)
 
         else:
@@ -137,10 +140,11 @@ Not providing a game will give you the top 10 played games"""
                 if x.game is not None:
                     if game_name.lower() in x.game.name.lower():
                         game_list.append('**{}**'.format(x.display_name))
-            await self.bot.say('There are **{}** people playing **{}**:\n{}'.format(len(game_list), game_name,'\n'.join(game_list)))
+            await self.bot.say(
+                'There are **{}** people playing **{}**:\n{}'.format(len(game_list), game_name, '\n'.join(game_list)))
 
     @commands.command(pass_context=True)
-    async def admincheck(self,ctx,user_to_check:discord.Member):
+    async def admincheck(self, ctx, user_to_check: discord.Member):
         """Checks if someone has admin permissions. """
         sw = user_to_check
         total_perms = [sw.permissions_in(x) for x in ctx.message.server.channels]
@@ -151,33 +155,31 @@ Not providing a game will give you the top 10 played games"""
         await self.bot.say('{} does not have admin permissions.'.format(user_to_check.display_name))
 
     @commands.command(pass_context=True)
-    async def loadout(self, ctx, *,kit=None):
+    async def loadout(self, ctx, *, kit=None):
         """Gives you a random Pilot or Titan Loadout. Usage: &loadout <pilot/titan>"""
-
-
 
         def random_if_not_in(string, random_list):
             if string is None:
                 return random.choice(random_list)
             string = string.lower().replace(" ", "")
-            return next((x for x in random_list if string in x.lower().replace(" ","")), random.choice(random_list))
+            return next((x for x in random_list if string in x.lower().replace(" ", "")), random.choice(random_list))
 
         def pilot(type):
             primary_list = ['G2A5', 'Hemlok BF-R', 'R201 Carbine', 'R101 Carbine', 'V47 Flatline',
-                                     'Alternator', 'CAR', 'R - 97 Compact SMG', 'Volt',
-                                     'L - STAR', 'Spitfire', 'X - 55 Devotion',
-                                     'D - 2 Double Take', 'Kraber AP', 'Longbow - DMR',
-                                     'EVA-8', 'Mastiff',
-                                     'EM - 4 Cold War', 'EPG - 1', 'R - 6P Softball', 'Sidewinder SMR']
-            secondary_list = ['Wingman', 'Wingman Elite', 'P2016', 'RE-45 Auto',  'Mozambique',
-                                       'Archer', 'Charge Rifle', 'Thunderbolt', 'MGL']
-            ordnance_list = ['Gravity Star','Satchel','Firestar','Frag Grenade','Arc Grenade','Electric Smoke']
-            tactical_list = ['Grapple','HoloPilot','Pulse Blade','Stim','Cloak','Phase Shift','A-Wall']
-            kit1_list = ['Phase Embark','Ordnance Expert','Fast Regen','Power Cell']
-            kit2_list = ['Kill Report','Wall Hang','Hover','Low Profile']
-            boost_list = ['Amped Weapons','Ticks','Smart Pistol','Map Hack','Pilot Sentry','Battery Back-up',
-                                   'Radar Jammer','Titan Sentry','Phase Rewind','Hard Cover','Holo Pilot Nova',
-                                   'DiceRoll']
+                            'Alternator', 'CAR', 'R - 97 Compact SMG', 'Volt',
+                            'L - STAR', 'Spitfire', 'X - 55 Devotion',
+                            'D - 2 Double Take', 'Kraber AP', 'Longbow - DMR',
+                            'EVA-8', 'Mastiff',
+                            'EM - 4 Cold War', 'EPG - 1', 'R - 6P Softball', 'Sidewinder SMR']
+            secondary_list = ['Wingman', 'Wingman Elite', 'P2016', 'RE-45 Auto', 'Mozambique',
+                              'Archer', 'Charge Rifle', 'Thunderbolt', 'MGL']
+            ordnance_list = ['Gravity Star', 'Satchel', 'Firestar', 'Frag Grenade', 'Arc Grenade', 'Electric Smoke']
+            tactical_list = ['Grapple', 'HoloPilot', 'Pulse Blade', 'Stim', 'Cloak', 'Phase Shift', 'A-Wall']
+            kit1_list = ['Phase Embark', 'Ordnance Expert', 'Fast Regen', 'Power Cell']
+            kit2_list = ['Kill Report', 'Wall Hang', 'Hover', 'Low Profile']
+            boost_list = ['Amped Weapons', 'Ticks', 'Smart Pistol', 'Map Hack', 'Pilot Sentry', 'Battery Back-up',
+                          'Radar Jammer', 'Titan Sentry', 'Phase Rewind', 'Hard Cover', 'Holo Pilot Nova',
+                          'DiceRoll']
             primary = random_if_not_in(type, primary_list)
             secondary = random_if_not_in(type, secondary_list)
             ordnance = random_if_not_in(type, ordnance_list)
@@ -194,27 +196,28 @@ Not providing a game will give you the top 10 played games"""
 **Boost: **{}""".format(primary, secondary, tactical, ordnance, kit1, kit2, boost)
 
         def titan(type):
-            titan_list = ['Tone','Scorch','Ronin','Ion','Legion','Northstar','Monarch']
-            titan_kit1_list = ['Assault Chip','Stealth Auto-Eject','Turbo Engine','Overcore','Nuclear Ejection',
-                                  'Counter Ready']
+            titan_list = ['Tone', 'Scorch', 'Ronin', 'Ion', 'Legion', 'Northstar', 'Monarch']
+            titan_kit1_list = ['Assault Chip', 'Stealth Auto-Eject', 'Turbo Engine', 'Overcore', 'Nuclear Ejection',
+                               'Counter Ready']
             titan = random_if_not_in(type, titan_list)
             kit1 = random_if_not_in(type, titan_kit1_list)
             if titan == 'Tone':
-                kit2 = random.choice(['Enhanced Tracker Rounds','Reinforced Particle Wall','Pulse-Echo',
-                                      'Rocket Barrage','Burst Loader'])
+                kit2 = random.choice(['Enhanced Tracker Rounds', 'Reinforced Particle Wall', 'Pulse-Echo',
+                                      'Rocket Barrage', 'Burst Loader'])
             elif titan == 'Scorch':
-                kit2 = random.choice(['Wildfire Launcher','Tempered Plating','Inferno Shield','Fuel for the Fire',
+                kit2 = random.choice(['Wildfire Launcher', 'Tempered Plating', 'Inferno Shield', 'Fuel for the Fire',
                                       'Scorched Earth'])
             elif titan == 'Ronin':
-                kit2 = random.choice(['Ricochet Rounds','Thunderstorm','Temporal Anomaly','Highlander','Phase Reflex'])
+                kit2 = random.choice(
+                    ['Ricochet Rounds', 'Thunderstorm', 'Temporal Anomaly', 'Highlander', 'Phase Reflex'])
             elif titan == 'Ion':
-                kit2 = random.choice(['Entangled Energy','Zero-Point Trip Wire','Vortex Amplifier','Grand Cannon',
+                kit2 = random.choice(['Entangled Energy', 'Zero-Point Trip Wire', 'Vortex Amplifier', 'Grand Cannon',
                                       '5-Way Splitter'])
             elif titan == 'Legion':
-                kit2 = random.choice(['Enhanced Ammo Capacity','Sensor Array','Bulwark','Light-Weight Alloys',
+                kit2 = random.choice(['Enhanced Ammo Capacity', 'Sensor Array', 'Bulwark', 'Light-Weight Alloys',
                                       'Hidden Compartment'])
             elif titan == 'Northstar':
-                kit2 = random.choice(['Piercing Shot','Enhanced Payload','Twin Traps','Viper Thrusters',
+                kit2 = random.choice(['Piercing Shot', 'Enhanced Payload', 'Twin Traps', 'Viper Thrusters',
                                       'Threat Optics'])
             elif titan == 'Monarch':
                 kit2 = random.choice(['Shield Amplifier', 'Energy Theif', 'Survival of the Fittest', 'Rapid Rearm'])
@@ -223,12 +226,11 @@ Not providing a game will give you the top 10 played games"""
                     random.choice(['Rearm and Reload', 'Maelstrom', 'Energy Field']),
                     random.choice(['Multi-Target Missiles', 'Superior Chassis', 'XO-16 Accelerator'])
                 )
-            fallkit = random.choice(['Warpfall','Bubbleshield'])
+            fallkit = random.choice(['Warpfall', 'Bubbleshield'])
             return """**Titan:**{}
 **Kit 1: **{}
 **Kit 2: **{}
-**Titanfall Kit: **{}""".format(titan,kit1,kit2,fallkit)
-
+**Titanfall Kit: **{}""".format(titan, kit1, kit2, fallkit)
 
         if kit == 'pilot':
             msg = pilot(kit)
@@ -237,6 +239,19 @@ Not providing a game will give you the top 10 played games"""
         else:
             msg = '{}\n{}'.format(pilot(kit), titan(kit))
         await self.bot.say(msg)
+
+    @commands.command(name='6roll')
+    async def six_roll(self, count :int = 1):
+        rolls = [random.randint(1,6) for x in range(0, count)]
+        hits = sum(1 for x in rolls if x >= 5)
+        message = 'Rolled {}D6, {} hits: {}'.format(str(count), str(hits), ', '.join([str(x) if x < 5 else '**{}**'.format(str(x)) for x in rolls]))
+        if rolls.count(1) >= count/2:
+            if hits == 0:
+                message.append('\n**Critical glitch!**')
+            else:
+                message.append('\nGlitch!')
+        await self.bot.say(message)
+
 
 
 def setup(bot):
