@@ -92,6 +92,7 @@ class ShitPosting():
 
     @commands.command(pass_context=True)
     async def isshitter(self, ctx, usr: discord.Member):
+        """Uses only the most advanced algorithms avaliable to man to carefully decide if someone is shit!"""
         isshit = random.choice(['', 'not '])
         if usr.id == '129855424198475776':
             await self.bot.say('Vex is not a shitter')
