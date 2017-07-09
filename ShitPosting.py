@@ -91,41 +91,21 @@ class ShitPosting():
                 break
 
     @commands.command(pass_context=True)
-    @checks.is_botbanned()
-    async def isshitter(self, ctx, *, usr=None):
-        """Uses only the most advanced algorithms avaliable to man to carefully decide if someone is shit!"""
+    async def isshitter(self, ctx, usr: discord.Member):
         isshit = random.choice(['', 'not '])
-        mentions = ctx.message.mentions
-        if len(mentions) != 0:
-            memb = mentions[0]
-            if memb.id == '129855424198475776':
-                await self.bot.say('Vex is not a shitter')
-            elif memb == ctx.message.author:
-                await self.bot.say('You know what you are.')
-            else:
-                if isshit == '':
-                    try:
-                        await self.bot.change_nickname(memb, memb.display_name + '🔰')
-                    except discord.Forbidden:
-                        pass
-                await self.bot.say('{} is {}a shitter'.format(memb.display_name, isshit))
-        elif len(mentions) == 0:
-            if usr == 'Vex':
-                await self.bot.say('Vex is not a shitter')
-            elif usr in ctx.message.author.name or usr in ctx.message.author.display_name:
-                await self.bot.say('You know what you are.')
-            else:
-                for memb in ctx.message.server.members:
-                    if usr.lower() in memb.display_name.lower() or usr.lower() in memb.name.lower():
-                        if isshit == '':
-                            try:
-                                await self.bot.change_nickname(memb, memb.display_name + '🔰')
-                            except discord.Forbidden:
-                                pass
-                        await self.bot.say('{} is {}a shitter'.format(memb.display_name, isshit))
-                        break
-                else:
-                    await self.bot.say('{} is {}a shitter'.format(usr, isshit))
+        if usr.id == '129855424198475776':
+            await self.bot.say('Vex is not a shitter')
+        elif usr == self.bot.user:
+            pass
+        elif usr == ctx.message.author:
+            await self.bot.say('You know what you are')
+        else:
+            try:
+                if not isshit:
+                    await self.bot.change_nickname(usr, usr.display_name + '🔰')
+                await self.bot.say('{} is {}a shitter'.format(usr.display_name + '🔰', isshit))
+            except discord.Forbidden:
+                pass
 
     @commands.command(pass_context=True)
     @commands.cooldown(1, 60, type=commands.BucketType.server)
@@ -153,19 +133,21 @@ class ShitPosting():
             file.close()
 
     @commands.command(pass_context=True)
-    @commands.cooldown(1, 60, type=commands.BucketType.server)
+    @commands.cooldown(1, 60, type=commands.BucketType.user)
     async def roulette(self, ctx, bullets='1'):
         """A simple, stupid game of russian roulette. Load 1-6 bullets in the chamber,
 the less bullets you load, the longer the penalty."""
         bannedrole = discord.utils.get(ctx.message.server.roles, name='banned')
+
         async def tempban(member, seconds):
             await self.bot.add_roles(member, bannedrole)
             await asyncio.sleep(seconds)
             await self.bot.remove_roles(member, bannedrole)
+
         try:
             int(bullets)
         except ValueError:
-            if ctx.message.author.id== '242506098261753857':
+            if ctx.message.author.id == '242506098261753857':
                 await self.bot.say('Fuck you skeletonbones you goddamn bot breaking piece of shit')
             await self.bot.say('{} is not a number!'.format(bullets))
         bullets = int(bullets)
@@ -188,14 +170,18 @@ the less bullets you load, the longer the penalty."""
                                          .format(ctx.message.author.display_name, str(bullets),
                                                  '' if bullets == 1 else 's'))
             await asyncio.sleep(5)
-            if random.randint(1,6) <= bullets:
-                await self.bot.edit_message(message, message.content+'\nand shoots themselves in the head!')
-                await tempban(ctx.message.author, (6-bullets)*60)
+            if random.randint(1, 6) <= bullets:
+                await self.bot.edit_message(message, message.content + '\nand shoots themselves in the head!')
+                await tempban(ctx.message.author, (6 - bullets) * 60)
             else:
                 await self.bot.edit_message(message, message.content + '\n click!')
 
-
-
+    @roulette.error
+    async def roulette_error(self, error, ctx):
+        if isinstance(error, commands.CommandOnCooldown):
+            msg = await self.bot.say(error)
+            await asyncio.sleep(5)
+            await self.bot.delete_messages([msg, ctx.message])
 
 
 def setup(bot):
